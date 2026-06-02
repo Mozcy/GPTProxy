@@ -171,13 +171,6 @@ func ensureCodexProcess(procMap map[int32]*process.Process, pid int32) (*process
 }
 
 func enrichCodexAppServerSnapshotCommandLines(snapshots map[int32]codexProcessSnapshot, procMap map[int32]*process.Process, processName string) {
-	preferredCandidates := collectCodexLauncherDescendantPIDs(snapshots)
-	for pid := range preferredCandidates {
-		enrichCodexSnapshotCommandLine(snapshots, procMap, pid, processName)
-	}
-	if len(launcherSubtreeCodexAppServerProcessIDs(snapshots, processName)) > 0 {
-		return
-	}
 	for pid, snapshot := range snapshots {
 		if strings.EqualFold(snapshot.name, processName) {
 			enrichCodexSnapshotCommandLine(snapshots, procMap, pid, processName)
@@ -224,9 +217,6 @@ func primaryCodexAppServerProcessIDs(snapshots map[int32]codexProcessSnapshot, p
 }
 
 func preferredCodexAppServerProcessIDs(snapshots map[int32]codexProcessSnapshot, processName string) []int32 {
-	if pids := launcherSubtreeCodexAppServerProcessIDs(snapshots, processName); len(pids) > 0 {
-		return pids
-	}
 	return primaryCodexAppServerProcessIDs(snapshots, processName)
 }
 

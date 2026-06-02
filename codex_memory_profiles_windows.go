@@ -15,6 +15,7 @@ type codexMemoryLauncherKind string
 const (
 	codexMemoryLauncherVSCode    codexMemoryLauncherKind = "vscode"
 	codexMemoryLauncherJetBrains codexMemoryLauncherKind = "jetbrains"
+	codexMemoryLauncherDesktop   codexMemoryLauncherKind = "desktop"
 )
 
 type codexMemoryPatchField struct {
@@ -95,6 +96,25 @@ var codexMemoryPatchProfiles = []codexMemoryPatchProfile{
 				name:       "access_token",
 				baseOffset: 0x0E299648,
 				offsets:    []uintptr{0x240, 0x1F0, 0x108, 0x58, 0x118, 0xB8, 0x0},
+				length:     2,
+			},
+		},
+	},
+	{
+		launcher: codexMemoryLauncherDesktop,
+		version:  "",
+		sha256:   "76651FA56A58BEECF5FE0B60DDA8E13E596519B6E16BD698FDAA0E7473D97E3E",
+		fields: []codexMemoryPatchField{
+			{
+				name:       "account_id",
+				baseOffset: 0x0EE88110,
+				offsets:    []uintptr{0x40, 0x120, 0xA08, 0x28, 0x110, 0x140, 0x0},
+				length:     36,
+			},
+			{
+				name:       "access_token",
+				baseOffset: 0x0EE88110,
+				offsets:    []uintptr{0x40, 0x38, 0x108, 0x58, 0x120, 0xB8, 0x0},
 				length:     2,
 			},
 		},
@@ -241,6 +261,8 @@ func codexMemoryLauncherKindFromName(name string) codexMemoryLauncherKind {
 		return codexMemoryLauncherVSCode
 	case "intellij idea", "goland", "pycharm", "webstorm", "rider", "clion", "phpstorm", "rubymine", "jetbrains terminal":
 		return codexMemoryLauncherJetBrains
+	case "microsoft store codex", "microsoft store / windowsapps", "codex desktop":
+		return codexMemoryLauncherDesktop
 	default:
 		return ""
 	}
