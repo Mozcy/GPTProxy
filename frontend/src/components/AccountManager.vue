@@ -9,6 +9,7 @@ import {
   CancelOpenAIAuth,
   DeleteAccount,
   ListAccounts,
+  RefreshAccountCredential,
   RefreshAccountUsage,
   StartOpenAIAuth,
 } from '../../wailsjs/go/main/App'
@@ -21,6 +22,7 @@ const authPending = ref(false)
 const authCanceling = ref(false)
 const accountRefreshing = ref(false)
 const accountActivating = ref(false)
+const credentialRefreshingId = ref(null)
 const selectedAccountId = ref(null)
 const authBusy = computed(() => authStarting.value || authCanceling.value)
 
@@ -185,6 +187,24 @@ async function deleteAccount(row) {
   }
 }
 
+async function refreshAccountCredential(row) {
+  if (!row?.id) {
+    ElMessage.warning('账号 ID 无效')
+    return
+  }
+
+  credentialRefreshingId.value = row.id
+  try {
+    const account = await RefreshAccountCredential(row.id)
+    upsertAccount(account)
+    ElMessage.success('凭证已刷新')
+  } catch (error) {
+    ElMessage.error(error?.message || String(error))
+  } finally {
+    credentialRefreshingId.value = null
+  }
+}
+
 async function copyText(value, label) {
   if (!value) {
     ElMessage.warning(`${label}为空，无法复制`)
@@ -275,11 +295,13 @@ function formatUsageSeconds(value) {
       <div class="card-header">
         <span>账号管理</span>
         <div class="header-actions">
-          <el-button class="icon-action settings" size="small" text :icon="Refresh" :loading="accountRefreshing"
-            :disabled="authPending || authBusy || accountActivating" title="刷新账号额度" @click="refreshAccountUsage" />
           <el-button type="success" size="small" :loading="accountActivating"
             :disabled="!selectedAccountId || authPending || authBusy || accountRefreshing" @click="activateAccount">
             激活账号
+          </el-button>
+          <el-button type="primary" size="small" :loading="accountRefreshing"
+            :disabled="authPending || authBusy || accountActivating" @click="refreshAccountUsage">
+            刷新额度
           </el-button>
           <el-button :type="authPending ? 'danger' : 'primary'" size="small" :loading="authBusy"
             :disabled="accountRefreshing || accountActivating" @click="handleAuthButtonClick">
@@ -337,10 +359,21 @@ function formatUsageSeconds(value) {
           </span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100" align="center">
+      <el-table-column label="操作" width="126" align="center">
         <template #default="{ row }">
           <div class="operation-actions">
-            <el-button class="icon-action danger" size="small" text :icon="Delete" @click="deleteAccount(row)" />
+            <el-button
+              class="icon-action settings"
+              size="small"
+              text
+              :icon="Refresh"
+              title="刷新凭证"
+              :loading="credentialRefreshingId === row.id"
+              :disabled="credentialRefreshingId !== null || accountLoading || accountActivating || accountRefreshing"
+              @click="refreshAccountCredential(row)"
+            />
+            <el-button class="icon-action danger" size="small" text :icon="Delete" title="删除"
+              :disabled="credentialRefreshingId !== null" @click="deleteAccount(row)" />
             <el-popover trigger="click" placement="left" width="400" popper-class="account-detail-popover">
               <template #reference>
                 <el-button class="icon-action info" size="small" text :icon="QuestionFilled" />

@@ -50,6 +50,10 @@ export function QuitApplication() {
   return window['go']['main']['App']['QuitApplication']();
 }
 
+export function RefreshAccountCredential(arg1) {
+  return window['go']['main']['App']['RefreshAccountCredential'](arg1);
+}
+
 export function RefreshAccountUsage() {
   return window['go']['main']['App']['RefreshAccountUsage']();
 }

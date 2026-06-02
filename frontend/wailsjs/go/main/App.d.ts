@@ -26,6 +26,8 @@ export function ListAccounts():Promise<Array<main.AccountInfo>>;
 
 export function QuitApplication():Promise<void>;
 
+export function RefreshAccountCredential(arg1:number):Promise<main.AccountInfo>;
+
 export function RefreshAccountUsage():Promise<void>;
 
 export function SaveUpstreamConfig(arg1:main.UpstreamConfig):Promise<main.UpstreamConfig>;

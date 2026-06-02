@@ -437,6 +437,139 @@ func exchangeOpenAIToken(code string, codeVerifier string, upstreamConfig Upstre
 	return token, nil
 }
 
+// refreshOpenAIToken 使用 refresh_token 换取新的 OAuth token。
+func refreshOpenAIToken(refreshToken string, upstreamConfig UpstreamConfig) (oauthTokenResponse, error) {
+	if strings.TrimSpace(refreshToken) == "" {
+		return oauthTokenResponse{}, errors.New("refresh_token 为空")
+	}
+
+	bodyData, err := json.Marshal(map[string]string{
+		"client_id":     openAIClientID,
+		"grant_type":    "refresh_token",
+		"refresh_token": refreshToken,
+	})
+	if err != nil {
+		return oauthTokenResponse{}, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, openAITokenEndpoint, strings.NewReader(string(bodyData)))
+	if err != nil {
+		return oauthTokenResponse{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Originator", "codex_vscode")
+	req.Header.Set("User-Agent", "codex_vscode/0.133.0-alpha.1 (Windows 10.0.26200; x86_64) unknown (VS Code; 26.519.32039)")
+
+	upstreamConfig, err = normalizeUpstreamConfig(upstreamConfig)
+	if err != nil {
+		return oauthTokenResponse{}, fmt.Errorf("代理配置无效: %w", err)
+	}
+	transport, err := newUpstreamTransport(upstreamConfig)
+	if err != nil {
+		return oauthTokenResponse{}, fmt.Errorf("创建代理 HTTP 客户端失败: %w", err)
+	}
+	defer transport.CloseIdleConnections()
+
+	appLogger.Info("通过代理刷新 OpenAI token", "type", upstreamConfig.Type, "address", upstreamConfig.IP+":"+upstreamConfig.Port)
+	client := &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return oauthTokenResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return oauthTokenResponse{}, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return oauthTokenResponse{}, fmt.Errorf("token 刷新失败: %s %s", resp.Status, string(body))
+	}
+
+	var token oauthTokenResponse
+	if err := json.Unmarshal(body, &token); err != nil {
+		return oauthTokenResponse{}, err
+	}
+	if token.AccessToken == "" {
+		return oauthTokenResponse{}, errors.New("token 刷新响应缺少 access_token")
+	}
+	return token, nil
+}
+
+// RefreshAccountCredential 刷新指定账号的 OAuth 凭证。
+func (a *App) RefreshAccountCredential(id int64) (AccountInfo, error) {
+	if err := a.ensureProxyService(); err != nil {
+		appLogger.Error("刷新账号凭证失败: 服务未初始化", "error", err, "id", id)
+		return AccountInfo{}, err
+	}
+
+	existing, err := a.proxyStore.GetAccountRecord(id)
+	if err != nil {
+		appLogger.Error("刷新账号凭证失败: 查询账号失败", "error", err, "id", id)
+		return AccountInfo{}, err
+	}
+	if strings.TrimSpace(existing.RefreshToken) == "" {
+		return AccountInfo{}, errors.New("账号 refresh_token 为空")
+	}
+
+	token, err := refreshOpenAIToken(existing.RefreshToken, a.proxyManager.GetUpstreamConfig())
+	if err != nil {
+		appLogger.Error("刷新账号凭证失败: token 刷新失败", "error", err, "id", id, "account_id", existing.AccountID, "email", existing.Email)
+		return AccountInfo{}, err
+	}
+	token.RefreshToken = firstNonEmpty(token.RefreshToken, existing.RefreshToken)
+	token.IDToken = firstNonEmpty(token.IDToken, existing.IDToken)
+	token.TokenType = firstNonEmpty(token.TokenType, existing.TokenType, "Bearer")
+	token.AccountID = firstNonEmpty(token.AccountID, existing.AccountID)
+
+	updatedRecord, err := buildAccountFromToken(token)
+	if err != nil {
+		appLogger.Error("刷新账号凭证失败: 解析刷新后 token 失败", "error", err, "id", id, "account_id", existing.AccountID, "email", existing.Email)
+		return AccountInfo{}, err
+	}
+	updatedRecord.ID = existing.ID
+	updatedRecord.Active = existing.Active
+	updatedRecord.Provider = firstNonEmpty(updatedRecord.Provider, existing.Provider)
+	updatedRecord.Subject = firstNonEmpty(updatedRecord.Subject, existing.Subject)
+	updatedRecord.UserID = firstNonEmpty(updatedRecord.UserID, existing.UserID)
+	updatedRecord.AccountID = firstNonEmpty(updatedRecord.AccountID, existing.AccountID)
+	updatedRecord.Email = firstNonEmpty(updatedRecord.Email, existing.Email)
+	updatedRecord.Name = firstNonEmpty(updatedRecord.Name, existing.Name)
+	updatedRecord.Subscription = firstNonEmpty(updatedRecord.Subscription, existing.Subscription)
+	updatedRecord.SubscriptionExpiresAt = firstNonEmpty(updatedRecord.SubscriptionExpiresAt, existing.SubscriptionExpiresAt)
+	updatedRecord.ExpiresAt = firstNonEmpty(updatedRecord.ExpiresAt, existing.ExpiresAt)
+
+	updated, err := a.proxyStore.SaveAccount(updatedRecord)
+	if err != nil {
+		appLogger.Error("刷新账号凭证失败: 保存账号失败", "error", err, "id", id, "account_id", updatedRecord.AccountID, "email", updatedRecord.Email)
+		return AccountInfo{}, err
+	}
+	updated.AccessToken = updatedRecord.AccessToken
+	updated.IDToken = updatedRecord.IDToken
+	updated.RefreshToken = updatedRecord.RefreshToken
+	updatedRecord.ID = updated.ID
+	updatedRecord.AccountInfo = updated
+
+	if updated.Active {
+		a.proxyManager.SetActiveAccount(updatedRecord)
+		codexInfo, err := a.syncCodexAuthFromAccount(updatedRecord)
+		if err != nil {
+			appLogger.Error("刷新账号凭证失败: 同步 Codex auth.json 失败", "error", err, "id", updated.ID, "account_id", updated.AccountID, "email", updated.Email)
+			return AccountInfo{}, err
+		}
+		if a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, codexAuthUpdatedEvent, codexInfo)
+		}
+	}
+
+	appLogger.Info("账号凭证刷新完成", "id", updated.ID, "account_id", updated.AccountID, "email", updated.Email, "active", updated.Active)
+	return updated, nil
+}
+
 // buildAccountFromToken 从 token 响应中提取账号信息。
 func buildAccountFromToken(token oauthTokenResponse) (accountRecord, error) {
 	claims, err := parseIDTokenClaims(token.IDToken)
