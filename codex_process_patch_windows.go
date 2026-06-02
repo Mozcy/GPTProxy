@@ -96,7 +96,7 @@ func patchCodexProcessMemory(pid int32, record accountRecord) error {
 		"module_base", fmt.Sprintf("0x%X", module.base),
 		"launcher", ctx.launcherName,
 		"launcher_confidence", ctx.launcherConfidence,
-		"profile", fmt.Sprintf("%s/%s", profile.launcher, profile.version),
+		"profile", formatCodexMemoryPatchProfileID(profile),
 	)
 	return nil
 }
@@ -118,6 +118,44 @@ func readCodexProcessMemoryAccountID(pid int32) (string, error) {
 	}
 
 	profile, _, err := resolveCodexMemoryPatchProfile(pid, module.path)
+	if err != nil {
+		return "", err
+	}
+
+	field, ok := findCodexMemoryPatchField(profile, "account_id")
+	if !ok {
+		return "", fmt.Errorf("profile %s/%s 缺少 account_id 偏移配置", profile.launcher, profile.version)
+	}
+
+	address, err := resolveCodexPointerChain(handle, module.base+field.baseOffset, field.offsets)
+	if err != nil {
+		return "", fmt.Errorf("account_id 解析指针链失败: %w", err)
+	}
+
+	data, err := readCodexMemory(handle, address, field.length)
+	if err != nil {
+		return "", fmt.Errorf("account_id 读取失败: %w", err)
+	}
+	return strings.TrimSpace(formatCodexMemoryBytes(data)), nil
+}
+
+func readCodexProcessMemoryAccountIDForInfo(info CodexProcessInfo) (string, error) {
+	if info.ProcessID <= 0 {
+		return "", errors.New("Codex 进程 PID 无效")
+	}
+
+	handle, err := openCodexMemoryReadProcess(uint32(info.ProcessID))
+	if err != nil {
+		return "", err
+	}
+	defer closeCodexMemoryHandle(handle)
+
+	module, err := findCodexMemoryModuleBase(uint32(info.ProcessID), "codex.exe")
+	if err != nil {
+		return "", err
+	}
+
+	profile, _, err := resolveCodexMemoryPatchProfileForProcessInfo(info, module.path)
 	if err != nil {
 		return "", err
 	}

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
+	"time"
 )
 
 // CodexProcessInfo 表示 Codex 进程扫描结果。
@@ -26,6 +28,7 @@ type CodexProcessInfo struct {
 	Email               string   `json:"email"`
 	ProcessTree         string   `json:"processTree"`
 	ChildProcesses      string   `json:"childProcesses"`
+	HelperProcesses     string   `json:"helperProcesses"`
 	Status              string   `json:"status"`
 	ThreadCount         int32    `json:"threadCount"`
 	HandleCount         uint32   `json:"handleCount"`
@@ -56,17 +59,19 @@ type CodexProcessInfo struct {
 	TCPConnections      string   `json:"tcpConnections"`
 }
 
-// ScanCodexProcesses 扫描正在运行的 codex.exe 进程。
+// ScanCodexProcesses 扫描正在运行的 Codex app-server 进程。
 func (a *App) ScanCodexProcesses() ([]CodexProcessInfo, error) {
 	a.clearSelectedCodexProcessPIDs()
 
+	start := time.Now()
 	rows, err := scanCodexProcessesByName("codex.exe")
 	if err != nil {
 		appLogger.Error("扫描 Codex 进程失败", "error", err)
 		return nil, err
 	}
+	scanElapsed := time.Since(start)
 	a.enrichCodexProcessAccounts(rows)
-	appLogger.Info("扫描 Codex 进程完成", "count", len(rows))
+	appLogger.Info("扫描 Codex 进程完成", "count", len(rows), "scan_elapsed", scanElapsed.String(), "total_elapsed", time.Since(start).String())
 	return rows, nil
 }
 
@@ -75,24 +80,31 @@ func (a *App) enrichCodexProcessAccounts(rows []CodexProcessInfo) {
 		return
 	}
 
+	var wg sync.WaitGroup
 	for i := range rows {
-		accountID, err := readCodexProcessMemoryAccountID(rows[i].ProcessID)
-		if err != nil {
-			appLogger.Warn("读取 Codex 进程 account_id 失败", "pid", rows[i].ProcessID, "error", err)
-			continue
-		}
-		rows[i].AccountID = accountID
-		if accountID == "" {
-			continue
-		}
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
 
-		account, err := a.proxyStore.GetAccountByAccountID(accountID)
-		if err != nil {
-			appLogger.Warn("未匹配到 Codex 进程账号", "pid", rows[i].ProcessID, "account_id", accountID, "error", err)
-			continue
-		}
-		rows[i].Email = account.Email
+			accountID, err := readCodexProcessMemoryAccountIDForInfo(rows[idx])
+			if err != nil {
+				appLogger.Warn("读取 Codex 进程 account_id 失败", "pid", rows[idx].ProcessID, "error", err)
+				return
+			}
+			rows[idx].AccountID = accountID
+			if accountID == "" {
+				return
+			}
+
+			account, err := a.proxyStore.GetAccountByAccountID(accountID)
+			if err != nil {
+				appLogger.Warn("未匹配到 Codex 进程账号", "pid", rows[idx].ProcessID, "account_id", accountID, "error", err)
+				return
+			}
+			rows[idx].Email = account.Email
+		}(i)
 	}
+	wg.Wait()
 }
 
 // SetSelectedCodexProcessPIDs 保存当前 Codex Process 表格勾选的 PID 集合。

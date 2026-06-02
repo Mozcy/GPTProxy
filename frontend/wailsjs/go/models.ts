@@ -149,6 +149,7 @@ export namespace main {
 	    email: string;
 	    processTree: string;
 	    childProcesses: string;
+	    helperProcesses: string;
 	    status: string;
 	    threadCount: number;
 	    handleCount: number;
@@ -202,6 +203,7 @@ export namespace main {
 	        this.email = source["email"];
 	        this.processTree = source["processTree"];
 	        this.childProcesses = source["childProcesses"];
+	        this.helperProcesses = source["helperProcesses"];
 	        this.status = source["status"];
 	        this.threadCount = source["threadCount"];
 	        this.handleCount = source["handleCount"];

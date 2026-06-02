@@ -153,9 +153,6 @@ function processDetailFields(row) {
     ['邮箱', row.email],
     ['命令行', row.commandLine],
     ['程序路径', row.executablePath],
-    ['所属用户', row.owner],
-    ['启动时间', row.creationDate],
-    ['状态', row.status],
     ['父进程 ID', row.parentPid],
     ['父进程名称', row.parentName],
     ['父进程命令行', row.parentCommandLine],
@@ -165,34 +162,7 @@ function processDetailFields(row) {
     ['启动来源命令行', row.launcherCommandLine],
     ['识别置信度', formatLauncherConfidence(row.launcherConfidence)],
     ['进程链', row.processTree],
-    ['子进程', row.childProcesses],
-    ['线程数', row.threadCount],
-    ['句柄数', row.handleCount],
-    ['工作集内存 MB', row.workingSetMB],
-    ['虚拟内存 MB', row.virtualSizeMB],
-    ['峰值工作集 MB', row.peakWorkingSetMB],
-    ['共享内存 MB', row.sharedMemoryMB],
-    ['数据内存 MB', row.dataMemoryMB],
-    ['读操作次数', row.readCount],
-    ['写操作次数', row.writeCount],
-    ['读取 MB', row.readBytesMB],
-    ['写入 MB', row.writeBytesMB],
-    ['CPU 百分比', row.cpuPercent],
-    ['CPU 总秒数', row.totalCPUSeconds],
-    ['用户态 CPU 秒数', row.userModeTimeSec],
-    ['内核态 CPU 秒数', row.kernelModeTimeSec],
-    ['仍在运行', formatBool(row.isRunning)],
-    ['前台进程', formatBool(row.foreground)],
-    ['文件大小 MB', row.fileSizeMB],
-    ['文件创建时间', row.fileCreated],
-    ['文件修改时间', row.fileModified],
-    ['文件产品名', row.fileProductName],
-    ['文件产品版本', row.fileProductVersion],
     ['文件版本', row.fileVersion],
-    ['文件公司', row.fileCompany],
-    ['文件描述', row.fileDescription],
-    ['SHA256', row.sha256],
-    ['TCP 连接', row.tcpConnections],
   ]
 }
 
@@ -345,7 +315,7 @@ async function copyText(value, label) {
         :data="processRows"
         class="environment-table"
         border
-        empty-text="暂无 Codex 进程"
+        empty-text="暂无 Codex App-Server 进程"
         row-key="pid"
         @selection-change="handleProcessSelectionChange"
       >
@@ -356,7 +326,7 @@ async function copyText(value, label) {
             <span>{{ displayValue(row.name) }}</span>
           </template>
         </el-table-column> -->
-        <el-table-column label="启动来源" min-width="100" show-overflow-tooltip>
+        <el-table-column label="启动来源" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ displayLauncher(row) }}</span>
           </template>

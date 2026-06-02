@@ -11,3 +11,7 @@ func patchCodexProcessMemory(pid int32, record accountRecord) error {
 func readCodexProcessMemoryAccountID(pid int32) (string, error) {
 	return "", errors.New("Codex 进程内存读取仅支持 Windows")
 }
+
+func readCodexProcessMemoryAccountIDForInfo(info CodexProcessInfo) (string, error) {
+	return "", errors.New("Codex 进程内存读取仅支持 Windows")
+}
