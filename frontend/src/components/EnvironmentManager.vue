@@ -17,7 +17,7 @@ const processRows = ref([])
 const environmentLoading = ref(false)
 const processLoading = ref(false)
 const injectingPID = ref(null)
-const processDetailPopoverLabels = new Set(['命令行', '程序路径', '父进程命令行', '启动来源路径', '启动来源命令行', '进程链'])
+const processDetailPopoverLabels = new Set(['命令行', '程序路径', '父进程命令行', '启动来源路径', '启动来源命令行', '进程链', 'SHA256'])
 let offCodexAuthUpdated = null
 let offCodexProcessChanged = null
 let codexProcessRefreshTimer = null
@@ -163,6 +163,7 @@ function processDetailFields(row) {
     ['识别置信度', formatLauncherConfidence(row.launcherConfidence)],
     ['进程链', row.processTree],
     ['文件版本', row.fileVersion],
+    ['SHA256', row.sha256],
   ]
 }
 
@@ -652,7 +653,7 @@ async function copyText(value, label) {
 }
 
 .process-detail-grid {
-  grid-template-columns: 100px minmax(0, 1fr);
+  grid-template-columns: 90px minmax(0, 1fr);
 }
 
 .popover-field-label {

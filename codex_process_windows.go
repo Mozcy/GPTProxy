@@ -705,10 +705,14 @@ func enrichCodexProcessListFileInfoCached(info *CodexProcessInfo, cache map[stri
 func enrichCodexProcessListFileInfo(info *CodexProcessInfo) {
 	version := readCodexProcessFileVersionInfo(info.ExecutablePath)
 	info.FileVersion = version.FileVersion
+	if hash, err := codexProcessFileSHA256(info.ExecutablePath); err == nil {
+		info.SHA256 = hash
+	}
 }
 
 func copyCodexProcessListFileInfo(info *CodexProcessInfo, source CodexProcessInfo) {
 	info.FileVersion = source.FileVersion
+	info.SHA256 = source.SHA256
 }
 
 func getProcessString(fn func() (string, error)) string {
