@@ -190,31 +190,16 @@ func updateCodexAuthJSON(data []byte, record accountRecord) ([]byte, error) {
 		return nil, fmt.Errorf("解析现有 Codex auth.json 失败: %w", err)
 	}
 
-	authModeValue := "chatgpt"
-	if property, ok, err := findJSONProperty(data, rootStart, "auth_mode"); err != nil {
-		return nil, fmt.Errorf("解析现有 Codex auth.json 失败: %w", err)
-	} else if ok {
-		var existing string
-		if err := json.Unmarshal(data[property.valueStart:property.valueEnd], &existing); err == nil && strings.TrimSpace(existing) != "" {
-			authModeValue = existing
-		}
-	}
-
 	var err error
-	data, err = upsertJSONStringProperty(data, rootStart, "auth_mode", authModeValue)
-	if err != nil {
-		return nil, err
-	}
 	data, err = upsertJSONStringProperty(data, rootStart, "last_refresh", time.Now().UTC().Format(time.RFC3339))
 	if err != nil {
 		return nil, err
 	}
 
 	tokenValues := []jsonStringField{
+		{key: "id_token", value: record.IDToken},
 		{key: "access_token", value: record.AccessToken},
 		{key: "refresh_token", value: record.RefreshToken},
-		{key: "id_token", value: record.IDToken},
-		{key: "token_type", value: firstNonEmpty(record.TokenType, "Bearer")},
 		{key: "account_id", value: record.AccountID},
 	}
 
@@ -237,6 +222,7 @@ func updateCodexAuthJSON(data []byte, record accountRecord) ([]byte, error) {
 			return nil, err
 		}
 	}
+	data = removeJSONProperty(data, tokensStart, "token_type")
 	return data, nil
 }
 
@@ -253,20 +239,20 @@ type jsonPropertyRange struct {
 
 func defaultCodexAuthJSON(record accountRecord, lastRefresh string) []byte {
 	fields := []jsonStringField{
+		{key: "id_token", value: record.IDToken},
 		{key: "access_token", value: record.AccessToken},
 		{key: "refresh_token", value: record.RefreshToken},
-		{key: "id_token", value: record.IDToken},
-		{key: "token_type", value: firstNonEmpty(record.TokenType, "Bearer")},
 		{key: "account_id", value: record.AccountID},
 	}
 	var builder strings.Builder
 	builder.WriteString("{\n")
 	builder.WriteString("  \"auth_mode\": \"chatgpt\",\n")
-	builder.WriteString("  \"last_refresh\": ")
-	builder.WriteString(jsonStringLiteral(lastRefresh))
-	builder.WriteString(",\n")
+	builder.WriteString("  \"OPENAI_API_KEY\": null,\n")
 	builder.WriteString("  \"tokens\": ")
 	builder.WriteString(codexAuthTokensJSON(fields, "  "))
+	builder.WriteString(",\n")
+	builder.WriteString("  \"last_refresh\": ")
+	builder.WriteString(jsonStringLiteral(lastRefresh))
 	builder.WriteString("\n}\n")
 	return []byte(builder.String())
 }
@@ -326,6 +312,31 @@ func insertJSONRawProperty(data []byte, objectStart int, key string, rawValue st
 	}
 	closeIndex := objectEnd - 1
 	return replaceJSONRange(data, closeIndex, closeIndex, []byte(insert.String()))
+}
+
+func removeJSONProperty(data []byte, objectStart int, key string) []byte {
+	property, ok, err := findJSONProperty(data, objectStart, key)
+	if err != nil || !ok {
+		return data
+	}
+
+	afterValue := skipJSONWhitespace(data, property.valueEnd)
+	if afterValue < len(data) && data[afterValue] == ',' {
+		deleteEnd := skipJSONWhitespace(data, afterValue+1)
+		return replaceJSONRange(data, property.memberStart, deleteEnd, nil)
+	}
+
+	deleteStart := property.memberStart
+	for prev := property.memberStart - 1; prev >= 0; prev-- {
+		if isJSONWhitespace(data[prev]) {
+			continue
+		}
+		if data[prev] == ',' {
+			deleteStart = prev
+		}
+		break
+	}
+	return replaceJSONRange(data, deleteStart, property.valueEnd, nil)
 }
 
 func findJSONProperty(data []byte, objectStart int, key string) (jsonPropertyRange, bool, error) {
