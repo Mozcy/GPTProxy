@@ -15,3 +15,7 @@ func readCodexProcessMemoryAccountID(pid int32) (string, error) {
 func readCodexProcessMemoryAccountIDForInfo(info CodexProcessInfo) (string, error) {
 	return "", errors.New("Codex 进程内存读取仅支持 Windows")
 }
+
+func readCodexProcessMemoryAccessTokenClaimsForInfo(info CodexProcessInfo) (idTokenClaims, error) {
+	return idTokenClaims{}, errors.New("Codex 进程内存读取仅支持 Windows")
+}

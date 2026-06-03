@@ -453,7 +453,7 @@ ORDER BY id ASC`)
 	}
 	defer rows.Close()
 
-	var result []AccountInfo
+	result := make([]AccountInfo, 0)
 	for rows.Next() {
 		item, _, err := scanAccountRecord(rows)
 		if err != nil {
@@ -678,6 +678,11 @@ func scanAccountRecord(scanner sqlScanner) (AccountInfo, accountRecord, error) {
 	item.AccessToken = record.AccessToken
 	item.IDToken = record.IDToken
 	item.RefreshToken = record.RefreshToken
+	if item.Email == "" && record.AccessToken != "" {
+		if claims, err := parseIDTokenClaims(record.AccessToken); err == nil {
+			item.Email = tokenClaimsEmail(claims)
+		}
+	}
 	return item, record, nil
 }
 

@@ -588,16 +588,7 @@ func buildAccountFromToken(token oauthTokenResponse) (accountRecord, error) {
 	}
 
 	expiresAt := tokenExpiresAt(accessClaims, claims, token.ExpiresIn)
-	email := claims.Email
-	if email == "" {
-		email = claims.OpenAIProfile.Email
-	}
-	if email == "" {
-		email = accessClaims.Email
-	}
-	if email == "" {
-		email = accessClaims.OpenAIProfile.Email
-	}
+	email := firstNonEmpty(tokenClaimsEmail(accessClaims), tokenClaimsEmail(claims))
 	accountID := firstNonEmpty(token.AccountID, claims.OpenAIAuth.ChatGPTAccountID, accessClaims.OpenAIAuth.ChatGPTAccountID)
 	userID := firstNonEmpty(claims.OpenAIAuth.ChatGPTUserID, claims.OpenAIAuth.UserID, accessClaims.OpenAIAuth.ChatGPTUserID, accessClaims.OpenAIAuth.UserID)
 	subscription := strings.ToLower(firstNonEmpty(claims.OpenAIAuth.ChatGPTPlanType, accessClaims.OpenAIAuth.ChatGPTPlanType))
@@ -620,6 +611,31 @@ func buildAccountFromToken(token oauthTokenResponse) (accountRecord, error) {
 		IDToken:      token.IDToken,
 		TokenType:    token.TokenType,
 	}, nil
+}
+
+func tokenClaimsEmail(claims idTokenClaims) string {
+	return firstNonEmpty(claims.Email, claims.OpenAIProfile.Email)
+}
+
+func extractJWTToken(value string) string {
+	value = strings.TrimSpace(value)
+	for _, field := range strings.FieldsFunc(value, func(r rune) bool {
+		return !isJWTTokenChar(r)
+	}) {
+		if strings.Count(field, ".") >= 2 {
+			return field
+		}
+	}
+	return value
+}
+
+func isJWTTokenChar(r rune) bool {
+	return (r >= 'a' && r <= 'z') ||
+		(r >= 'A' && r <= 'Z') ||
+		(r >= '0' && r <= '9') ||
+		r == '-' ||
+		r == '_' ||
+		r == '.'
 }
 
 // firstNonEmpty 返回第一个非空字符串。

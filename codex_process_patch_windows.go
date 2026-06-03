@@ -58,6 +58,8 @@ const (
 
 	codexMemoryTH32CSSnapModule   = 0x00000008
 	codexMemoryTH32CSSnapModule32 = 0x00000010
+
+	codexMemoryAccessTokenReadLength = 2000
 )
 
 func patchCodexProcessMemory(pid int32, record accountRecord) error {
@@ -173,6 +175,52 @@ func readCodexProcessMemoryAccountIDForInfo(info CodexProcessInfo) (string, erro
 	data, err := readCodexMemory(handle, address, field.length)
 	if err != nil {
 		return "", fmt.Errorf("account_id 读取失败: %w", err)
+	}
+	return strings.TrimSpace(formatCodexMemoryBytes(data)), nil
+}
+
+func readCodexProcessMemoryAccessTokenClaimsForInfo(info CodexProcessInfo) (idTokenClaims, error) {
+	token, err := readCodexProcessMemoryStringFieldForInfo(info, "access_token", codexMemoryAccessTokenReadLength)
+	if err != nil {
+		return idTokenClaims{}, err
+	}
+	return parseIDTokenClaims(extractJWTToken(token))
+}
+
+func readCodexProcessMemoryStringFieldForInfo(info CodexProcessInfo, fieldName string, readLength int) (string, error) {
+	if info.ProcessID <= 0 {
+		return "", errors.New("Codex 进程 PID 无效")
+	}
+
+	handle, err := openCodexMemoryReadProcess(uint32(info.ProcessID))
+	if err != nil {
+		return "", err
+	}
+	defer closeCodexMemoryHandle(handle)
+
+	module, err := findCodexMemoryModuleBase(uint32(info.ProcessID), "codex.exe")
+	if err != nil {
+		return "", err
+	}
+
+	profile, _, err := resolveCodexMemoryPatchProfileForProcessInfo(info, module.path)
+	if err != nil {
+		return "", err
+	}
+
+	field, ok := findCodexMemoryPatchField(profile, fieldName)
+	if !ok {
+		return "", fmt.Errorf("profile %s/%s 缺少 %s 偏移配置", profile.launcher, profile.version, fieldName)
+	}
+
+	address, err := resolveCodexPointerChain(handle, module.base+field.baseOffset, field.offsets)
+	if err != nil {
+		return "", fmt.Errorf("%s 解析指针链失败: %w", fieldName, err)
+	}
+
+	data, err := readCodexMemory(handle, address, readLength)
+	if err != nil {
+		return "", fmt.Errorf("%s 读取失败: %w", fieldName, err)
 	}
 	return strings.TrimSpace(formatCodexMemoryBytes(data)), nil
 }

@@ -107,14 +107,14 @@ var codexMemoryPatchProfiles = []codexMemoryPatchProfile{
 		fields: []codexMemoryPatchField{
 			{
 				name:       "account_id",
-				baseOffset: 0x0EE88110,
-				offsets:    []uintptr{0x40, 0x120, 0xA08, 0x28, 0x110, 0x140, 0x0},
+				baseOffset: 0x0EE848F0,
+				offsets:    []uintptr{0x18, 0x38, 0x120, 0xE8, 0x0},
 				length:     36,
 			},
 			{
 				name:       "access_token",
-				baseOffset: 0x0EE88110,
-				offsets:    []uintptr{0x40, 0x38, 0x108, 0x58, 0x120, 0xB8, 0x0},
+				baseOffset: 0x0EE84A80,
+				offsets:    []uintptr{0x1A8, 0xB0, 0x2A8, 0xD8, 0x120, 0xB8, 0x0},
 				length:     2,
 			},
 		},

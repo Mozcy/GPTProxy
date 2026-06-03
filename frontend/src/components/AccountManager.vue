@@ -63,11 +63,22 @@ onUnmounted(() => {
 async function loadAccounts() {
   accountLoading.value = true
   try {
-    accounts.value = await ListAccounts()
-    const activeAccount = accounts.value.find((item) => item.active)
-    if (activeAccount) {
-      selectedAccountId.value = activeAccount.id
-    } else if (selectedAccountId.value && !accounts.value.some((item) => item.id === selectedAccountId.value)) {
+    const loadedAccounts = await ListAccounts()
+    accounts.value = Array.isArray(loadedAccounts) ? loadedAccounts : []
+
+    let activeAccountId = null
+    let selectedAccountExists = false
+    for (const item of accounts.value) {
+      if (item.id === selectedAccountId.value) {
+        selectedAccountExists = true
+      }
+      if (!activeAccountId && item.active) {
+        activeAccountId = item.id
+      }
+    }
+    if (activeAccountId) {
+      selectedAccountId.value = activeAccountId
+    } else if (selectedAccountId.value && !selectedAccountExists) {
       selectedAccountId.value = null
     }
   } catch (error) {

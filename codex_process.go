@@ -92,16 +92,22 @@ func (a *App) enrichCodexProcessAccounts(rows []CodexProcessInfo) {
 				return
 			}
 			rows[idx].AccountID = accountID
-			if accountID == "" {
-				return
+
+			claims, err := readCodexProcessMemoryAccessTokenClaimsForInfo(rows[idx])
+			if err != nil {
+				appLogger.Warn("读取 Codex 进程 access_token 失败", "pid", rows[idx].ProcessID, "account_id", accountID, "error", err)
+			} else {
+				rows[idx].Email = tokenClaimsEmail(claims)
 			}
 
-			account, err := a.proxyStore.GetAccountByAccountID(accountID)
-			if err != nil {
-				appLogger.Warn("未匹配到 Codex 进程账号", "pid", rows[idx].ProcessID, "account_id", accountID, "error", err)
-				return
+			if accountID != "" && rows[idx].Email == "" {
+				account, err := a.proxyStore.GetAccountByAccountID(accountID)
+				if err != nil {
+					appLogger.Warn("未匹配到 Codex 进程账号", "pid", rows[idx].ProcessID, "account_id", accountID, "error", err)
+					return
+				}
+				rows[idx].Email = account.Email
 			}
-			rows[idx].Email = account.Email
 		}(i)
 	}
 	wg.Wait()
