@@ -26,9 +26,8 @@ const (
 )
 
 type codexMemoryRemoteConfig struct {
-	SchemaVersion int                        `json:"schema_version"`
-	DataVersion   int                        `json:"data_version"`
-	Profiles      []codexMemoryRemoteProfile `json:"profiles"`
+	DataVersion int                        `json:"data_version"`
+	Profiles    []codexMemoryRemoteProfile `json:"profiles"`
 }
 
 type codexMemoryRemoteProfile struct {
@@ -38,8 +37,6 @@ type codexMemoryRemoteProfile struct {
 	SHA256          string                   `json:"sha256"`
 	ProfileRevision int                      `json:"profile_revision"`
 	Enabled         *bool                    `json:"enabled"`
-	Module          string                   `json:"module"`
-	BaseAddress     string                   `json:"base_address"`
 	Fields          []codexMemoryRemoteField `json:"fields"`
 }
 
@@ -51,9 +48,8 @@ type codexMemoryRemoteField struct {
 }
 
 type codexMemoryParsedRemoteConfig struct {
-	schemaVersion int
-	dataVersion   int
-	profiles      []codexMemoryPatchProfile
+	dataVersion int
+	profiles    []codexMemoryPatchProfile
 }
 
 var (
@@ -87,7 +83,7 @@ func (a *App) loadCachedCodexMemoryProfiles() {
 		return
 	}
 	applyCodexMemoryRemoteProfiles(parsed.profiles)
-	appLogger.Info("Codex 注入配置缓存已加载", "schema_version", parsed.schemaVersion, "data_version", parsed.dataVersion, "count", len(parsed.profiles))
+	appLogger.Info("Codex 注入配置缓存已加载", "data_version", parsed.dataVersion, "count", len(parsed.profiles))
 }
 
 func (a *App) refreshCodexMemoryProfilesFromRemote(ctx context.Context) {
@@ -121,16 +117,15 @@ func (a *App) updateCodexMemoryProfilesFromRemote(ctx context.Context) error {
 	}
 
 	if err := a.proxyStore.SaveCodexMemoryProfileConfig(codexMemoryProfileConfigRecord{
-		Source:        codexMemoryRemoteConfigSource,
-		SchemaVersion: parsed.schemaVersion,
-		DataVersion:   parsed.dataVersion,
-		RawJSON:       string(data),
+		Source:      codexMemoryRemoteConfigSource,
+		DataVersion: parsed.dataVersion,
+		RawJSON:     string(data),
 	}); err != nil {
 		return err
 	}
 
 	applyCodexMemoryRemoteProfiles(parsed.profiles)
-	appLogger.Info("远程 Codex 配置文件已加载", "url", url, "schema_version", parsed.schemaVersion, "data_version", parsed.dataVersion, "count", len(parsed.profiles))
+	appLogger.Info("远程 Codex 配置文件已加载", "url", url, "data_version", parsed.dataVersion, "count", len(parsed.profiles))
 	return nil
 }
 
@@ -176,9 +171,6 @@ func parseCodexMemoryRemoteConfig(data []byte) (codexMemoryParsedRemoteConfig, e
 	if err := json.Unmarshal(data, &config); err != nil {
 		return codexMemoryParsedRemoteConfig{}, err
 	}
-	if config.SchemaVersion != 1 {
-		return codexMemoryParsedRemoteConfig{}, fmt.Errorf("不支持的 schema_version: %d", config.SchemaVersion)
-	}
 	if config.DataVersion <= 0 {
 		return codexMemoryParsedRemoteConfig{}, errors.New("data_version 必须大于 0")
 	}
@@ -218,9 +210,8 @@ func parseCodexMemoryRemoteConfig(data []byte) (codexMemoryParsedRemoteConfig, e
 	}
 
 	return codexMemoryParsedRemoteConfig{
-		schemaVersion: config.SchemaVersion,
-		dataVersion:   config.DataVersion,
-		profiles:      profiles,
+		dataVersion: config.DataVersion,
+		profiles:    profiles,
 	}, nil
 }
 
@@ -242,14 +233,6 @@ func parseCodexMemoryRemoteProfile(item codexMemoryRemoteProfile, index int) (co
 	if sha256 != "" && !isCodexMemoryRemoteSHA256(sha256) {
 		return codexMemoryPatchProfile{}, 0, enabled, fmt.Errorf("profiles[%d]: sha256 格式无效", index)
 	}
-	module := strings.ToLower(strings.TrimSpace(item.Module))
-	if module != "" && module != "codex.exe" {
-		return codexMemoryPatchProfile{}, 0, enabled, fmt.Errorf("profiles[%d]: module 仅支持 codex.exe", index)
-	}
-	defaultBase, hasDefaultBase, err := parseCodexMemoryRemoteHexOptional(item.BaseAddress)
-	if err != nil {
-		return codexMemoryPatchProfile{}, 0, enabled, fmt.Errorf("profiles[%d]: base_address 无效: %w", index, err)
-	}
 	if len(item.Fields) == 0 {
 		return codexMemoryPatchProfile{}, 0, enabled, fmt.Errorf("profiles[%d]: fields 不能为空", index)
 	}
@@ -257,7 +240,7 @@ func parseCodexMemoryRemoteProfile(item codexMemoryRemoteProfile, index int) (co
 	fields := make([]codexMemoryPatchField, 0, len(item.Fields))
 	seenFields := make(map[string]struct{}, len(item.Fields))
 	for fieldIndex, field := range item.Fields {
-		parsedField, err := parseCodexMemoryRemoteField(field, defaultBase, hasDefaultBase)
+		parsedField, err := parseCodexMemoryRemoteField(field)
 		if err != nil {
 			return codexMemoryPatchProfile{}, 0, enabled, fmt.Errorf("profiles[%d].fields[%d]: %w", index, fieldIndex, err)
 		}
@@ -294,7 +277,7 @@ func parseCodexMemoryRemoteLauncher(value string) (codexMemoryLauncherKind, erro
 	}
 }
 
-func parseCodexMemoryRemoteField(field codexMemoryRemoteField, defaultBase uintptr, hasDefaultBase bool) (codexMemoryPatchField, error) {
+func parseCodexMemoryRemoteField(field codexMemoryRemoteField) (codexMemoryPatchField, error) {
 	name := strings.ToLower(strings.TrimSpace(field.Name))
 	if name != "account_id" && name != "access_token" {
 		return codexMemoryPatchField{}, fmt.Errorf("字段名不支持: %s", field.Name)
@@ -311,10 +294,7 @@ func parseCodexMemoryRemoteField(field codexMemoryRemoteField, defaultBase uintp
 		return codexMemoryPatchField{}, fmt.Errorf("base_address 无效: %w", err)
 	}
 	if !hasFieldBase {
-		if !hasDefaultBase {
-			return codexMemoryPatchField{}, errors.New("缺少 base_address")
-		}
-		base = defaultBase
+		return codexMemoryPatchField{}, errors.New("缺少 base_address")
 	}
 	if len(field.Offsets) == 0 || len(field.Offsets) > 16 {
 		return codexMemoryPatchField{}, fmt.Errorf("offsets 数量无效: %d", len(field.Offsets))
