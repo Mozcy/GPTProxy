@@ -1,13 +1,14 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Connection, CopyDocument, QuestionFilled } from '@element-plus/icons-vue'
 import {
   GetCodexAuthInfo,
+  GetSelectedCodexProcessLauncherKeys,
   InjectActiveAccountToCodexProcess,
   ScanCodexAuth,
   ScanCodexProcesses,
-  SetSelectedCodexProcessPIDs,
+  SetSelectedCodexProcessLauncherKeys,
   UpdateCodexMemoryProfileConfig,
 } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
@@ -19,7 +20,25 @@ const environmentLoading = ref(false)
 const processLoading = ref(false)
 const offsetUpdating = ref(false)
 const injectingPID = ref(null)
+const selectedInjectTargets = ref([])
 const processDetailPopoverLabels = new Set(['命令行', '程序路径', '父进程命令行', '启动来源路径', '启动来源命令行', '进程链', 'SHA256'])
+const jetbrainsInjectTargets = [
+  { key: 'jetbrains:intellij_idea', label: 'IntelliJ IDEA' },
+  { key: 'jetbrains:pycharm', label: 'PyCharm' },
+  { key: 'jetbrains:goland', label: 'GoLand' },
+  { key: 'jetbrains:webstorm', label: 'WebStorm' },
+  { key: 'jetbrains:rider', label: 'Rider' },
+  { key: 'jetbrains:clion', label: 'CLion' },
+  { key: 'jetbrains:phpstorm', label: 'PhpStorm' },
+  { key: 'jetbrains:rubymine', label: 'RubyMine' },
+  { key: 'jetbrains:terminal', label: 'JetBrains Terminal' },
+]
+const supportedInjectTargetKeys = new Set(['vscode', 'desktop', ...jetbrainsInjectTargets.map((item) => item.key)])
+const jetbrainsSelectedCount = computed(() => {
+  return jetbrainsInjectTargets.filter((item) => selectedInjectTargets.value.includes(item.key)).length
+})
+const jetbrainsAllSelected = computed(() => jetbrainsSelectedCount.value === jetbrainsInjectTargets.length)
+const jetbrainsIndeterminate = computed(() => jetbrainsSelectedCount.value > 0 && !jetbrainsAllSelected.value)
 let offCodexAuthUpdated = null
 let offCodexProcessChanged = null
 let codexProcessRefreshTimer = null
@@ -32,6 +51,7 @@ onMounted(async () => {
     scheduleCodexProcessRefresh()
   })
   await loadCodexAuthInfo()
+  await loadSelectedInjectTargets()
   await scanCodexProcesses(false)
 })
 
@@ -99,6 +119,55 @@ async function updateCodexMemoryProfileConfig() {
   }
 }
 
+async function loadSelectedInjectTargets() {
+  try {
+    const keys = await GetSelectedCodexProcessLauncherKeys()
+    selectedInjectTargets.value = Array.isArray(keys) ? keys.filter((key) => supportedInjectTargetKeys.has(key)) : []
+  } catch (error) {
+    ElMessage.error(error?.message || String(error))
+  }
+}
+
+async function persistSelectedInjectTargets() {
+  try {
+    await SetSelectedCodexProcessLauncherKeys(selectedInjectTargets.value)
+  } catch (error) {
+    ElMessage.error(error?.message || String(error))
+  }
+}
+
+function setInjectTargetSelected(key, checked) {
+  const selected = new Set(selectedInjectTargets.value)
+  if (checked) {
+    selected.add(key)
+  } else {
+    selected.delete(key)
+  }
+  selectedInjectTargets.value = [...selected].filter((item) => supportedInjectTargetKeys.has(item))
+  persistSelectedInjectTargets()
+}
+
+function setJetBrainsTargetsSelected(checked) {
+  const selected = new Set(selectedInjectTargets.value)
+  for (const item of jetbrainsInjectTargets) {
+    if (checked) {
+      selected.add(item.key)
+    } else {
+      selected.delete(item.key)
+    }
+  }
+  selectedInjectTargets.value = [...selected].filter((item) => supportedInjectTargetKeys.has(item))
+  persistSelectedInjectTargets()
+}
+
+function preventJetBrainsReferenceToggle(event) {
+  event?.preventDefault?.()
+}
+
+function toggleAllJetBrainsTargets() {
+  setJetBrainsTargetsSelected(!jetbrainsAllSelected.value)
+}
+
 function scheduleCodexProcessRefresh() {
   if (codexProcessRefreshTimer) {
     clearTimeout(codexProcessRefreshTimer)
@@ -107,14 +176,6 @@ function scheduleCodexProcessRefresh() {
     codexProcessRefreshTimer = null
     await scanCodexProcesses(false)
   }, 350)
-}
-
-async function handleProcessSelectionChange(selection) {
-  try {
-    await SetSelectedCodexProcessPIDs(selection.map((item) => item.pid))
-  } catch (error) {
-    ElMessage.error(error?.message || String(error))
-  }
 }
 
 function formatSubscription(value) {
@@ -324,6 +385,54 @@ async function copyText(value, label) {
       <div class="divider-row">
         <el-divider content-position="left">Codex Process</el-divider>
         <div class="divider-actions">
+          <div class="inject-targets">
+            <el-checkbox
+              class="inject-target-checkbox"
+              :model-value="selectedInjectTargets.includes('vscode')"
+              @change="(checked) => setInjectTargetSelected('vscode', checked)"
+            >
+              VS Code
+            </el-checkbox>
+            <el-popover trigger="click" placement="bottom" width="220" popper-class="jetbrains-target-popover">
+              <template #reference>
+                <el-checkbox
+                  class="inject-target-checkbox"
+                  :model-value="jetbrainsAllSelected"
+                  :indeterminate="jetbrainsIndeterminate"
+                  @click="preventJetBrainsReferenceToggle"
+                >
+                  JetBrains
+                </el-checkbox>
+              </template>
+              <div class="jetbrains-targets">
+                <div class="jetbrains-target-title">JetBrains</div>
+                <el-checkbox
+                  class="jetbrains-target-item"
+                  :model-value="jetbrainsAllSelected"
+                  :indeterminate="jetbrainsIndeterminate"
+                  @change="toggleAllJetBrainsTargets"
+                >
+                  全部
+                </el-checkbox>
+                <el-checkbox
+                  v-for="item in jetbrainsInjectTargets"
+                  :key="item.key"
+                  class="jetbrains-target-item"
+                  :model-value="selectedInjectTargets.includes(item.key)"
+                  @change="(checked) => setInjectTargetSelected(item.key, checked)"
+                >
+                  {{ item.label }}
+                </el-checkbox>
+              </div>
+            </el-popover>
+            <el-checkbox
+              class="inject-target-checkbox"
+              :model-value="selectedInjectTargets.includes('desktop')"
+              @change="(checked) => setInjectTargetSelected('desktop', checked)"
+            >
+              Desktop
+            </el-checkbox>
+          </div>
           <el-button
             type="primary"
             size="small"
@@ -343,11 +452,9 @@ async function copyText(value, label) {
         class="environment-table"
         border
         empty-text="暂无 Codex App-Server 进程"
-        max-height="320"
+        max-height="284"
         row-key="pid"
-        @selection-change="handleProcessSelectionChange"
       >
-        <el-table-column type="selection" width="42" align="center" />
         <el-table-column prop="pid" label="PID" width="90" align="center" />
         <!-- <el-table-column label="名称" width="140" show-overflow-tooltip>
           <template #default="{ row }">
@@ -367,9 +474,9 @@ async function copyText(value, label) {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="程序路径" min-width="400" show-overflow-tooltip>
+        <el-table-column label="程序路径" min-width="400">
           <template #default="{ row }">
-            <span>{{ displayValue(row.executablePath) }}</span>
+            <ValuePopover label="程序路径" :value="displayValue(row.executablePath)" />
           </template>
         </el-table-column>
         <el-table-column label="版本" width="160" show-overflow-tooltip>
@@ -481,6 +588,52 @@ async function copyText(value, label) {
   margin-left: 0;
 }
 
+.inject-targets {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.inject-target-label {
+  color: #b8c8d8;
+  font-size: 12px;
+}
+
+.inject-target-checkbox {
+  height: 24px;
+  margin-right: 0;
+  color: #d8e3ee;
+}
+
+.inject-target-checkbox :deep(.el-checkbox__label) {
+  color: #d8e3ee;
+  font-size: 12px;
+  padding-left: 5px;
+}
+
+.jetbrains-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jetbrains-target-title {
+  color: #e8eef5;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.jetbrains-target-item {
+  height: 22px;
+  margin-right: 0;
+}
+
+.jetbrains-target-item :deep(.el-checkbox__label) {
+  color: #d8e3ee;
+  font-size: 12px;
+}
+
 .environment-table {
   width: 100%;
   --el-table-bg-color: #243447;
@@ -584,14 +737,16 @@ async function copyText(value, label) {
 }
 
 :global(.codex-auth-detail-popover),
-:global(.codex-process-detail-popover) {
+:global(.codex-process-detail-popover),
+:global(.jetbrains-target-popover) {
   border: 1px solid #32475b !important;
   background: #243447 !important;
   color: #e8eef5 !important;
 }
 
 :global(.codex-auth-detail-popover .el-popper__arrow::before),
-:global(.codex-process-detail-popover .el-popper__arrow::before) {
+:global(.codex-process-detail-popover .el-popper__arrow::before),
+:global(.jetbrains-target-popover .el-popper__arrow::before) {
   border-color: #32475b !important;
   background: #243447 !important;
 }

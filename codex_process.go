@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -142,6 +143,38 @@ func (a *App) GetSelectedCodexProcessPIDs() []int32 {
 	return pids
 }
 
+// SetSelectedCodexProcessLauncherKeys 保存激活账号时自动注入的 Codex 启动来源。
+func (a *App) SetSelectedCodexProcessLauncherKeys(keys []string) {
+	a.processMu.Lock()
+	defer a.processMu.Unlock()
+
+	a.selectedLauncherKeys = make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		normalized := normalizeCodexProcessLauncherKey(key)
+		if normalized != "" && isSupportedCodexProcessLauncherKey(normalized) {
+			a.selectedLauncherKeys[normalized] = struct{}{}
+		}
+	}
+	appLogger.Info("Codex 自动注入来源选择已更新", "count", len(a.selectedLauncherKeys), "keys", strings.Join(a.getSelectedCodexProcessLauncherKeysLocked(), ","))
+}
+
+// GetSelectedCodexProcessLauncherKeys 返回当前内存中保存的自动注入来源。
+func (a *App) GetSelectedCodexProcessLauncherKeys() []string {
+	a.processMu.RLock()
+	defer a.processMu.RUnlock()
+
+	return a.getSelectedCodexProcessLauncherKeysLocked()
+}
+
+func (a *App) getSelectedCodexProcessLauncherKeysLocked() []string {
+	keys := make([]string, 0, len(a.selectedLauncherKeys))
+	for key := range a.selectedLauncherKeys {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 // InjectActiveAccountToCodexProcess 将当前激活账号写入指定 Codex 进程内存。
 func (a *App) InjectActiveAccountToCodexProcess(pid int32) error {
 	if err := a.ensureProxyService(); err != nil {
@@ -170,8 +203,32 @@ func (a *App) InjectActiveAccountToCodexProcess(pid int32) error {
 }
 
 func (a *App) patchSelectedCodexProcesses(record accountRecord) error {
-	pids := a.GetSelectedCodexProcessPIDs()
+	keys := a.GetSelectedCodexProcessLauncherKeys()
+	if len(keys) == 0 {
+		return nil
+	}
+
+	rows, err := scanCodexProcessesByName("codex.exe")
+	if err != nil {
+		return fmt.Errorf("扫描自动注入 Codex 进程失败: %w", err)
+	}
+
+	selected := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		selected[key] = struct{}{}
+	}
+	pids := make([]int32, 0, len(rows))
+	for _, row := range rows {
+		key := codexProcessLauncherKey(row.LauncherName)
+		if key == "" {
+			continue
+		}
+		if _, ok := selected[key]; ok {
+			pids = append(pids, row.ProcessID)
+		}
+	}
 	if len(pids) == 0 {
+		appLogger.Info("Codex 自动注入未匹配到进程", "keys", strings.Join(keys, ","))
 		return nil
 	}
 	return patchCodexProcesses(pids, record)
@@ -200,4 +257,55 @@ func (a *App) clearSelectedCodexProcessPIDs() {
 	defer a.processMu.Unlock()
 
 	a.selectedPIDs = make(map[int32]struct{})
+}
+
+func normalizeCodexProcessLauncherKey(key string) string {
+	return strings.ToLower(strings.TrimSpace(key))
+}
+
+func isSupportedCodexProcessLauncherKey(key string) bool {
+	switch key {
+	case "vscode", "desktop",
+		"jetbrains:intellij_idea",
+		"jetbrains:pycharm",
+		"jetbrains:goland",
+		"jetbrains:webstorm",
+		"jetbrains:rider",
+		"jetbrains:clion",
+		"jetbrains:phpstorm",
+		"jetbrains:rubymine",
+		"jetbrains:terminal":
+		return true
+	default:
+		return false
+	}
+}
+
+func codexProcessLauncherKey(name string) string {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "vs code", "vs code insiders", "vscodium":
+		return "vscode"
+	case "microsoft store codex", "microsoft store / windowsapps", "codex desktop":
+		return "desktop"
+	case "intellij idea":
+		return "jetbrains:intellij_idea"
+	case "pycharm":
+		return "jetbrains:pycharm"
+	case "goland":
+		return "jetbrains:goland"
+	case "webstorm":
+		return "jetbrains:webstorm"
+	case "rider":
+		return "jetbrains:rider"
+	case "clion":
+		return "jetbrains:clion"
+	case "phpstorm":
+		return "jetbrains:phpstorm"
+	case "rubymine":
+		return "jetbrains:rubymine"
+	case "jetbrains terminal":
+		return "jetbrains:terminal"
+	default:
+		return ""
+	}
 }

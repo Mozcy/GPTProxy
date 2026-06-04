@@ -25,7 +25,7 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:             "GPTManager",
 		Width:             1560,
-		Height:            900,
+		Height:            920,
 		HideWindowOnClose: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,

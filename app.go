@@ -13,31 +13,33 @@ import (
 
 // App 保存应用运行时上下文。
 type App struct {
-	ctx              context.Context
-	proxyStore       *ProxyStore
-	proxyManager     *ProxyManager
-	proxyInitErr     error
-	authMu           sync.Mutex
-	authRunning      bool
-	authCancel       context.CancelFunc
-	authDone         chan struct{}
-	authSession      uint64
-	usageCancel      context.CancelFunc
-	usageWG          sync.WaitGroup
-	usageMu          sync.Mutex
-	usageRunning     bool
-	usageLastRun     time.Time
-	processMu        sync.RWMutex
-	selectedPIDs     map[int32]struct{}
-	codexWatchMu     sync.Mutex
-	codexWatchCancel context.CancelFunc
-	codexWatchWG     sync.WaitGroup
+	ctx                  context.Context
+	proxyStore           *ProxyStore
+	proxyManager         *ProxyManager
+	proxyInitErr         error
+	authMu               sync.Mutex
+	authRunning          bool
+	authCancel           context.CancelFunc
+	authDone             chan struct{}
+	authSession          uint64
+	usageCancel          context.CancelFunc
+	usageWG              sync.WaitGroup
+	usageMu              sync.Mutex
+	usageRunning         bool
+	usageLastRun         time.Time
+	processMu            sync.RWMutex
+	selectedPIDs         map[int32]struct{}
+	selectedLauncherKeys map[string]struct{}
+	codexWatchMu         sync.Mutex
+	codexWatchCancel     context.CancelFunc
+	codexWatchWG         sync.WaitGroup
 }
 
 // NewApp 创建一个新的应用实例。
 func NewApp() *App {
 	return &App{
-		selectedPIDs: make(map[int32]struct{}),
+		selectedPIDs:         make(map[int32]struct{}),
+		selectedLauncherKeys: make(map[string]struct{}),
 	}
 }
 
