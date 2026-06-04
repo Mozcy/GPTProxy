@@ -357,19 +357,19 @@ async function copyText(value, label) {
                     <span>access_token</span>
                     <div class="token-value">
                       <ValuePopover label="access_token" :value="row.accessToken" />
-                      <el-button class="icon-action copy" size="small" text :icon="CopyDocument" title="复制 access_token"
+                      <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                         @click="copyText(row.accessToken, 'access_token')" />
                     </div>
                     <span>id_token</span>
                     <div class="token-value">
                       <ValuePopover label="id_token" :value="row.idToken" />
-                      <el-button class="icon-action copy" size="small" text :icon="CopyDocument" title="复制 id_token"
+                      <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                         @click="copyText(row.idToken, 'id_token')" />
                     </div>
                     <span>refresh_token</span>
                     <div class="token-value">
                       <ValuePopover label="refresh_token" :value="row.refreshToken" />
-                      <el-button class="icon-action copy" size="small" text :icon="CopyDocument" title="复制 refresh_token"
+                      <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                         @click="copyText(row.refreshToken, 'refresh_token')" />
                     </div>
                   </div>
@@ -492,14 +492,13 @@ async function copyText(value, label) {
                 size="small"
                 text
                 :icon="Connection"
-                title="注入"
                 :loading="injectingPID === row.pid"
                 :disabled="processLoading || (injectingPID !== null && injectingPID !== row.pid)"
                 @click="injectCodexProcess(row)"
               />
               <el-popover trigger="click" placement="left" width="400" popper-class="codex-process-detail-popover">
                 <template #reference>
-                  <el-button class="icon-action info" size="small" text :icon="QuestionFilled" title="进程详情" />
+                  <el-button class="icon-action info" size="small" text :icon="QuestionFilled" />
                 </template>
                 <div class="codex-process-detail">
                   <div class="detail-title">进程详情</div>
@@ -508,7 +507,7 @@ async function copyText(value, label) {
                       <span :class="{ 'popover-field-label': isProcessDetailPopoverField(field[0]) }">{{ field[0] }}</span>
                       <div v-if="isProcessDetailPopoverField(field[0])" class="token-value">
                         <ValuePopover :label="field[0]" :value="displayValue(formatNumber(field[1]))" />
-                        <el-button class="icon-action copy" size="small" text :icon="CopyDocument" :title="`复制${field[0]}`"
+                        <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                           @click="copyText(field[1], field[0])" />
                       </div>
                       <strong v-else>{{ displayValue(formatNumber(field[1])) }}</strong>

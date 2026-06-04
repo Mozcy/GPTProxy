@@ -40,6 +40,18 @@ body {
     background: #1f2f3f;
 }
 
+.theme-tooltip.el-popper.is-dark {
+    border: 1px solid #32475b;
+    background: #1f2f3f;
+    color: #e8eef5;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
+.theme-tooltip.el-popper.is-dark .el-popper__arrow::before {
+    border-color: #32475b;
+    background: #1f2f3f;
+}
+
 @font-face {
     font-family: "Nunito";
     font-style: normal;

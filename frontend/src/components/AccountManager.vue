@@ -378,12 +378,11 @@ function formatUsageSeconds(value) {
               size="small"
               text
               :icon="Refresh"
-              title="刷新凭证"
               :loading="credentialRefreshingId === row.id"
               :disabled="credentialRefreshingId !== null || accountLoading || accountActivating || accountRefreshing"
               @click="refreshAccountCredential(row)"
             />
-            <el-button class="icon-action danger" size="small" text :icon="Delete" title="删除"
+            <el-button class="icon-action danger" size="small" text :icon="Delete"
               :disabled="credentialRefreshingId !== null" @click="deleteAccount(row)" />
             <el-popover trigger="click" placement="left" width="400" popper-class="account-detail-popover">
               <template #reference>
@@ -402,19 +401,19 @@ function formatUsageSeconds(value) {
                   <span class="token-label">access_token</span>
                   <div class="token-value">
                     <ValuePopover label="access_token" :value="row.accessToken" />
-                    <el-button class="icon-action copy" size="small" text :icon="CopyDocument" title="复制 access_token"
+                    <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                       @click="copyText(row.accessToken, 'access_token')" />
                   </div>
                   <span class="token-label">id_token</span>
                   <div class="token-value">
                     <ValuePopover label="id_token" :value="row.idToken" />
-                    <el-button class="icon-action copy" size="small" text :icon="CopyDocument" title="复制 id_token"
+                    <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                       @click="copyText(row.idToken, 'id_token')" />
                   </div>
                   <span class="token-label">refresh_token</span>
                   <div class="token-value">
                     <ValuePopover label="refresh_token" :value="row.refreshToken" />
-                    <el-button class="icon-action copy" size="small" text :icon="CopyDocument" title="复制 refresh_token"
+                    <el-button class="icon-action copy" size="small" text :icon="CopyDocument"
                       @click="copyText(row.refreshToken, 'refresh_token')" />
                   </div>
                   <span>订阅过期</span><strong>{{ formatDateTime(row.subscriptionExpiresAt) }}</strong>

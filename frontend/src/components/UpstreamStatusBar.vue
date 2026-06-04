@@ -139,8 +139,10 @@ async function checkUpstreamStatus() {
       </span>
       <span class="upstream-address">{{ upstreamAddress }}</span>
     </div>
-    <el-button class="icon-action settings" size="small" text :icon="Setting" title="代理配置"
-      @click="openUpstreamDialog" />
+    <el-tooltip content="代理配置" placement="top" popper-class="theme-tooltip">
+      <el-button class="icon-action settings" size="small" text :icon="Setting"
+        @click="openUpstreamDialog" />
+    </el-tooltip>
   </footer>
 
   <div class="upstream-dialog-host">
