@@ -1,6 +1,8 @@
 html {
     background-color: rgba(27, 38, 54, 1);
     color: white;
+    scrollbar-color: #4f6680 #1f2f3f;
+    scrollbar-width: thin;
 }
 
 body {
@@ -9,6 +11,33 @@ body {
     font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
     "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
+}
+
+* {
+    scrollbar-color: #4f6680 #1f2f3f;
+    scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #1f2f3f;
+}
+
+*::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #4f6680;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #66809b;
+}
+
+*::-webkit-scrollbar-corner {
+    background: #1f2f3f;
 }
 
 @font-face {
