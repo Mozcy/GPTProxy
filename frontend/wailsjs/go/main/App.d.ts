@@ -43,3 +43,5 @@ export function SetSelectedCodexProcessPIDs(arg1:Array<number>):Promise<void>;
 export function ShowWindow():Promise<void>;
 
 export function StartOpenAIAuth():Promise<void>;
+
+export function UpdateCodexMemoryProfileConfig():Promise<void>;

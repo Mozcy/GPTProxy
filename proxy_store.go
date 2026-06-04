@@ -150,6 +150,15 @@ CREATE TABLE IF NOT EXISTS accounts (
 	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE(provider, account_id)
 );
+
+CREATE TABLE IF NOT EXISTS codex_memory_profile_config (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	source TEXT NOT NULL DEFAULT '',
+	schema_version INTEGER NOT NULL DEFAULT 0,
+	data_version INTEGER NOT NULL DEFAULT 0,
+	raw_json TEXT NOT NULL DEFAULT '',
+	fetched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `
 	if _, err := s.db.Exec(schema); err != nil {
 		return fmt.Errorf("初始化配置表失败: %w", err)
@@ -161,6 +170,60 @@ CREATE TABLE IF NOT EXISTS accounts (
 		return err
 	}
 	appLogger.Info("SQLite 表结构检查完成")
+	return nil
+}
+
+type codexMemoryProfileConfigRecord struct {
+	Source        string
+	SchemaVersion int
+	DataVersion   int
+	RawJSON       string
+	FetchedAt     string
+}
+
+func (s *ProxyStore) GetCodexMemoryProfileConfig() (codexMemoryProfileConfigRecord, bool, error) {
+	var record codexMemoryProfileConfigRecord
+	err := s.db.QueryRow(`
+SELECT source, schema_version, data_version, raw_json, fetched_at
+FROM codex_memory_profile_config
+WHERE id = 1`).Scan(
+		&record.Source,
+		&record.SchemaVersion,
+		&record.DataVersion,
+		&record.RawJSON,
+		&record.FetchedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return codexMemoryProfileConfigRecord{}, false, nil
+	}
+	if err != nil {
+		return codexMemoryProfileConfigRecord{}, false, fmt.Errorf("查询 Codex 注入配置缓存失败: %w", err)
+	}
+	return record, true, nil
+}
+
+func (s *ProxyStore) SaveCodexMemoryProfileConfig(record codexMemoryProfileConfigRecord) error {
+	if strings.TrimSpace(record.RawJSON) == "" {
+		return errors.New("Codex 注入配置内容为空")
+	}
+	_, err := s.db.Exec(`
+INSERT INTO codex_memory_profile_config (id, source, schema_version, data_version, raw_json, fetched_at)
+VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+ON CONFLICT(id) DO UPDATE SET
+	source = excluded.source,
+	schema_version = excluded.schema_version,
+	data_version = excluded.data_version,
+	raw_json = excluded.raw_json,
+	fetched_at = CURRENT_TIMESTAMP`,
+		record.Source,
+		record.SchemaVersion,
+		record.DataVersion,
+		record.RawJSON,
+	)
+	if err != nil {
+		return fmt.Errorf("保存 Codex 注入配置缓存失败: %w", err)
+	}
+	appLogger.Info("Codex 注入配置缓存已保存", "source", record.Source, "schema_version", record.SchemaVersion, "data_version", record.DataVersion)
 	return nil
 }
 

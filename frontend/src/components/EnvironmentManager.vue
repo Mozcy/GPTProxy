@@ -8,6 +8,7 @@ import {
   ScanCodexAuth,
   ScanCodexProcesses,
   SetSelectedCodexProcessPIDs,
+  UpdateCodexMemoryProfileConfig,
 } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import ValuePopover from './ValuePopover.vue'
@@ -16,6 +17,7 @@ const authRows = ref([])
 const processRows = ref([])
 const environmentLoading = ref(false)
 const processLoading = ref(false)
+const offsetUpdating = ref(false)
 const injectingPID = ref(null)
 const processDetailPopoverLabels = new Set(['命令行', '程序路径', '父进程命令行', '启动来源路径', '启动来源命令行', '进程链', 'SHA256'])
 let offCodexAuthUpdated = null
@@ -81,6 +83,19 @@ async function scanCodexProcesses(showMessage = true) {
     ElMessage.error(error?.message || String(error))
   } finally {
     processLoading.value = false
+  }
+}
+
+async function updateCodexMemoryProfileConfig() {
+  offsetUpdating.value = true
+  try {
+    await UpdateCodexMemoryProfileConfig()
+    ElMessage.success('偏移已更新')
+    await scanCodexProcesses(false)
+  } catch (error) {
+    ElMessage.error(error?.message || String(error))
+  } finally {
+    offsetUpdating.value = false
   }
 }
 
@@ -308,9 +323,20 @@ async function copyText(value, label) {
     <section class="codex-process-section">
       <div class="divider-row">
         <el-divider content-position="left">Codex Process</el-divider>
-        <el-button type="primary" size="small" :loading="processLoading" @click="scanCodexProcesses()">
-          进程扫描
-        </el-button>
+        <div class="divider-actions">
+          <el-button
+            type="primary"
+            size="small"
+            :loading="offsetUpdating"
+            :disabled="processLoading"
+            @click="updateCodexMemoryProfileConfig"
+          >
+            更新偏移
+          </el-button>
+          <el-button type="primary" size="small" :loading="processLoading" @click="scanCodexProcesses()">
+            进程扫描
+          </el-button>
+        </div>
       </div>
       <el-table
         :data="processRows"
@@ -442,6 +468,16 @@ async function copyText(value, label) {
   background: #243447;
   color: #e8eef5;
   font-weight: 600;
+}
+
+.divider-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.divider-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .environment-table {

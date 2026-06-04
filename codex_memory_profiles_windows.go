@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/shirou/gopsutil/v4/process"
 )
@@ -82,6 +83,25 @@ var codexMemoryPatchProfiles = []codexMemoryPatchProfile{
 		},
 	},
 	{
+		launcher: codexMemoryLauncherVSCode,
+		version:  "",
+		sha256:   "76651FA56A58BEECF5FE0B60DDA8E13E596519B6E16BD698FDAA0E7473D97E3E",
+		fields: []codexMemoryPatchField{
+			{
+				name:       "account_id",
+				baseOffset: 0x0EE848F0,
+				offsets:    []uintptr{0x18, 0x38, 0x120, 0xE8, 0x0},
+				length:     36,
+			},
+			{
+				name:       "access_token",
+				baseOffset: 0x0EE84A80,
+				offsets:    []uintptr{0x1A8, 0xB0, 0x2A8, 0xD8, 0x120, 0xB8, 0x0},
+				length:     2,
+			},
+		},
+	},
+	{
 		launcher: codexMemoryLauncherJetBrains,
 		version:  "0.128.0",
 		sha256:   "85A75FAF207720A9A3032F6FA77664B537E67884EB6A7E0C954D22E7F864A5AE",
@@ -121,6 +141,8 @@ var codexMemoryPatchProfiles = []codexMemoryPatchProfile{
 	},
 }
 
+var codexMemoryPatchProfilesMu sync.RWMutex
+
 func resolveCodexMemoryPatchProfile(pid int32, modulePath string) (codexMemoryPatchProfile, codexMemoryPatchContext, error) {
 	ctx, err := buildCodexMemoryPatchContext(pid, modulePath)
 	if err != nil {
@@ -139,7 +161,7 @@ func matchCodexMemoryPatchProfile(ctx codexMemoryPatchContext) (codexMemoryPatch
 		return codexMemoryPatchProfile{}, ctx, fmt.Errorf("不支持的 Codex 启动来源: %s", firstNonEmpty(ctx.launcherName, "未知"))
 	}
 
-	for _, profile := range codexMemoryPatchProfiles {
+	for _, profile := range codexMemoryPatchProfilesSnapshot() {
 		if profile.launcher != ctx.launcherKind {
 			continue
 		}
@@ -155,7 +177,7 @@ func matchCodexMemoryPatchProfile(ctx codexMemoryPatchContext) (codexMemoryPatch
 	}
 
 	if hash, ok := codexMemoryPatchContextSHA256(&ctx); ok {
-		for _, profile := range codexMemoryPatchProfiles {
+		for _, profile := range codexMemoryPatchProfilesSnapshot() {
 			if profile.launcher != ctx.launcherKind || strings.TrimSpace(profile.sha256) == "" {
 				continue
 			}
@@ -320,7 +342,7 @@ func codexMemoryVersionCandidatesFromProcessInfo(info CodexProcessInfo, path str
 
 func formatCodexMemorySupportedProfiles(launcher codexMemoryLauncherKind) string {
 	versions := make([]string, 0)
-	for _, profile := range codexMemoryPatchProfiles {
+	for _, profile := range codexMemoryPatchProfilesSnapshot() {
 		if launcher != "" && profile.launcher != launcher {
 			continue
 		}
@@ -331,6 +353,31 @@ func formatCodexMemorySupportedProfiles(launcher codexMemoryLauncherKind) string
 		return "无"
 	}
 	return strings.Join(versions, ", ")
+}
+
+func codexMemoryPatchProfilesSnapshot() []codexMemoryPatchProfile {
+	codexMemoryPatchProfilesMu.RLock()
+	defer codexMemoryPatchProfilesMu.RUnlock()
+
+	return cloneCodexMemoryPatchProfiles(codexMemoryPatchProfiles)
+}
+
+func setCodexMemoryPatchProfiles(profiles []codexMemoryPatchProfile) {
+	codexMemoryPatchProfilesMu.Lock()
+	defer codexMemoryPatchProfilesMu.Unlock()
+
+	codexMemoryPatchProfiles = cloneCodexMemoryPatchProfiles(profiles)
+}
+
+func cloneCodexMemoryPatchProfiles(profiles []codexMemoryPatchProfile) []codexMemoryPatchProfile {
+	cloned := make([]codexMemoryPatchProfile, 0, len(profiles))
+	for _, profile := range profiles {
+		item := profile
+		item.fields = make([]codexMemoryPatchField, len(profile.fields))
+		copy(item.fields, profile.fields)
+		cloned = append(cloned, item)
+	}
+	return cloned
 }
 
 func formatCodexMemoryPatchProfileID(profile codexMemoryPatchProfile) string {

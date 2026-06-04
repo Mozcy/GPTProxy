@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "data_version": 1,
+  "profiles": [
+    {
+      "id": "vscode-0.133.0-alpha.1-3FE3FDA1",
+      "launcher": "vscode",
+      "codex_version": "0.133.0-alpha.1",
+      "sha256": "3FE3FDA152A5AD1CF23D8684689094BC38708E58EEE181631267B106840AC672",
+      "profile_revision": 1,
+      "enabled": true,
+      "module": "codex.exe",
+      "base_address": "0x0E4F4000",
+      "fields": [
+        {
+          "name": "account_id",
+          "offsets": ["0x18", "0x68", "0x10", "0x238", "0xB0", "0x1B8", "0x0"],
+          "length": 36
+        },
+        {
+          "name": "access_token",
+          "offsets": ["0xE0", "0x670", "0x278", "0xA20", "0x118", "0xB8", "0x0"],
+          "length": 2
+        }
+      ]
+    },
+    {
+      "id": "vscode-sha256-DB991D1D",
+      "launcher": "vscode",
+      "codex_version": "",
+      "sha256": "DB991D1D96EE2F3F1EA715B8F8FA1067FDB934C11FF1056C54E732ABEFB86392",
+      "profile_revision": 1,
+      "enabled": true,
+      "module": "codex.exe",
+      "base_address": "0x0EA5BA10",
+      "fields": [
+        {
+          "name": "account_id",
+          "offsets": ["0x18", "0xB0", "0x340", "0xDA0", "0x0", "0x140", "0x0"],
+          "length": 36
+        },
+        {
+          "name": "access_token",
+          "offsets": ["0x18", "0x78", "0x78", "0x5E8", "0x120", "0xB8", "0x0"],
+          "length": 2
+        }
+      ]
+    },
+    {
+      "id": "vscode-sha256-76651FA5",
+      "launcher": "vscode",
+      "codex_version": "",
+      "sha256": "76651FA56A58BEECF5FE0B60DDA8E13E596519B6E16BD698FDAA0E7473D97E3E",
+      "profile_revision": 1,
+      "enabled": true,
+      "module": "codex.exe",
+      "fields": [
+        {
+          "name": "account_id",
+          "base_address": "0x0EE848F0",
+          "offsets": ["0x18", "0x38", "0x120", "0xE8", "0x0"],
+          "length": 36
+        },
+        {
+          "name": "access_token",
+          "base_address": "0x0EE84A80",
+          "offsets": ["0x1A8", "0xB0", "0x2A8", "0xD8", "0x120", "0xB8", "0x0"],
+          "length": 2
+        }
+      ]
+    },
+    {
+      "id": "jetbrains-0.128.0-85A75FAF",
+      "launcher": "jetbrains",
+      "codex_version": "0.128.0",
+      "sha256": "85A75FAF207720A9A3032F6FA77664B537E67884EB6A7E0C954D22E7F864A5AE",
+      "profile_revision": 1,
+      "enabled": true,
+      "module": "codex.exe",
+      "base_address": "0x0E299648",
+      "fields": [
+        {
+          "name": "account_id",
+          "offsets": ["0xD8", "0x950", "0x258", "0x10", "0x68", "0x2A0", "0x0"],
+          "length": 36
+        },
+        {
+          "name": "access_token",
+          "offsets": ["0x240", "0x1F0", "0x108", "0x58", "0x118", "0xB8", "0x0"],
+          "length": 2
+        }
+      ]
+    },
+    {
+      "id": "desktop-sha256-76651FA5",
+      "launcher": "desktop",
+      "codex_version": "",
+      "sha256": "76651FA56A58BEECF5FE0B60DDA8E13E596519B6E16BD698FDAA0E7473D97E3E",
+      "profile_revision": 1,
+      "enabled": true,
+      "module": "codex.exe",
+      "fields": [
+        {
+          "name": "account_id",
+          "base_address": "0x0EE848F0",
+          "offsets": ["0x18", "0x38", "0x120", "0xE8", "0x0"],
+          "length": 36
+        },
+        {
+          "name": "access_token",
+          "base_address": "0x0EE84A80",
+          "offsets": ["0x1A8", "0xB0", "0x2A8", "0xD8", "0x120", "0xB8", "0x0"],
+          "length": 2
+        }
+      ]
+    }
+  ]
+}

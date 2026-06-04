@@ -49,6 +49,7 @@ func (a *App) startup(ctx context.Context) {
 		a.proxyInitErr = err
 		appLogger.Error("初始化代理服务失败", "error", err)
 	} else {
+		a.startCodexMemoryProfileLoader()
 		//a.startAccountUsageRefresher()
 	}
 	startSystemTray(a)
@@ -166,6 +167,20 @@ func (a *App) RefreshAccountUsage() error {
 		return err
 	}
 	appLogger.Info("手动刷新账号额度完成")
+	return nil
+}
+
+// UpdateCodexMemoryProfileConfig 手动拉取远程 Codex 注入偏移配置并刷新内存。
+func (a *App) UpdateCodexMemoryProfileConfig() error {
+	if err := a.ensureProxyService(); err != nil {
+		appLogger.Error("更新 Codex 注入偏移配置失败: 服务未初始化", "error", err)
+		return err
+	}
+	if err := a.updateCodexMemoryProfilesFromRemote(context.Background()); err != nil {
+		appLogger.Error("更新 Codex 注入偏移配置失败", "error", err)
+		return err
+	}
+	appLogger.Info("更新 Codex 注入偏移配置完成")
 	return nil
 }
 

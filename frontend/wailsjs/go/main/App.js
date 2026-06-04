@@ -85,3 +85,7 @@ export function ShowWindow() {
 export function StartOpenAIAuth() {
   return window['go']['main']['App']['StartOpenAIAuth']();
 }
+
+export function UpdateCodexMemoryProfileConfig() {
+  return window['go']['main']['App']['UpdateCodexMemoryProfileConfig']();
+}
