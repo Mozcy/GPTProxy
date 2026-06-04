@@ -46,57 +46,19 @@ type codexMemoryPatchContext struct {
 var codexMemoryPatchProfiles = []codexMemoryPatchProfile{
 	{
 		launcher: codexMemoryLauncherVSCode,
-		version:  "0.133.0-alpha.1",
-		sha256:   "3FE3FDA152A5AD1CF23D8684689094BC38708E58EEE181631267B106840AC672",
-		fields: []codexMemoryPatchField{
-			{
-				name:       "account_id",
-				baseOffset: 0x0E4F4000,
-				offsets:    []uintptr{0x18, 0x68, 0x10, 0x238, 0xB0, 0x1B8, 0x0},
-				length:     36,
-			},
-			{
-				name:       "access_token",
-				baseOffset: 0x0E4F4000,
-				offsets:    []uintptr{0xE0, 0x670, 0x278, 0xA20, 0x118, 0xB8, 0x0},
-				length:     2,
-			},
-		},
-	},
-	{
-		launcher: codexMemoryLauncherVSCode,
-		version:  "",
-		sha256:   "DB991D1D96EE2F3F1EA715B8F8FA1067FDB934C11FF1056C54E732ABEFB86392",
-		fields: []codexMemoryPatchField{
-			{
-				name:       "account_id",
-				baseOffset: 0x0EA5BA10,
-				offsets:    []uintptr{0x18, 0xB0, 0x340, 0xDA0, 0x0, 0x140, 0x0},
-				length:     36,
-			},
-			{
-				name:       "access_token",
-				baseOffset: 0x0EA5BA10,
-				offsets:    []uintptr{0x18, 0x78, 0x78, 0x5E8, 0x120, 0xB8, 0x0},
-				length:     2,
-			},
-		},
-	},
-	{
-		launcher: codexMemoryLauncherVSCode,
 		version:  "",
 		sha256:   "76651FA56A58BEECF5FE0B60DDA8E13E596519B6E16BD698FDAA0E7473D97E3E",
 		fields: []codexMemoryPatchField{
 			{
 				name:       "account_id",
-				baseOffset: 0x0EE848F0,
-				offsets:    []uintptr{0x18, 0x38, 0x120, 0xE8, 0x0},
+				baseOffset: 0x0EE84A80,
+				offsets:    []uintptr{0x1378, 0xF8, 0x70, 0x38, 0x328, 0x140, 0x0},
 				length:     36,
 			},
 			{
 				name:       "access_token",
 				baseOffset: 0x0EE84A80,
-				offsets:    []uintptr{0x1A8, 0xB0, 0x2A8, 0xD8, 0x120, 0xB8, 0x0},
+				offsets:    []uintptr{0x1378, 0xF8, 0x20, 0x1C0, 0x120, 0xB8, 0x0},
 				length:     2,
 			},
 		},
