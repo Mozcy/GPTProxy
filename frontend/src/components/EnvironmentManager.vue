@@ -343,6 +343,7 @@ async function copyText(value, label) {
         class="environment-table"
         border
         empty-text="暂无 Codex App-Server 进程"
+        max-height="320"
         row-key="pid"
         @selection-change="handleProcessSelectionChange"
       >
